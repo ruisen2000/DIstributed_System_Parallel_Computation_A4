@@ -367,9 +367,10 @@ int main(int argc, char *argv[])
     #endif
         std::cout << std::fixed;
         // Get the world size and print it out here
-        // std::cout << "World size : " << world_size << "\n"
+        std::cout << "World size : " << world_size << "\n"
         std::cout << "Communication strategy : " << strategy << "\n";
         std::cout << "Iterations : " << max_iterations << "\n";
+        std::cout << "rank, num_edges, communication_time" << std::endl;
     }
 
     Graph g;

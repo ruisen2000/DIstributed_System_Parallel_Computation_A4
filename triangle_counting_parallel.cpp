@@ -215,7 +215,7 @@ void triangleCountParallel(Graph &g, uint strategy)
     }
     else{
         // print process statistics
-        std::cout << process_id << ", " << edge_count << ", " count << ", " << sync_time;
+        std::cout << process_id << ", " << edge_count << ", " << count << ", " << sync_time << std::endl;
     }
 }
 
