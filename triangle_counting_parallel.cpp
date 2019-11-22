@@ -133,6 +133,9 @@ void triangleCountParallel(Graph &g, uint strategy)
     long count = 0; 
     long global_count = 0;
     uintE edge_count = 0;
+    double sync_time = 0.0;
+
+    timer t1;
 
     if(process_id != 0){
         for (uintV u = start; u < end; u++)
@@ -151,6 +154,8 @@ void triangleCountParallel(Graph &g, uint strategy)
             }
         }
 
+        t1.start();
+
         if (strategy == 1)
         {
             MPI_Send(&count, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
@@ -163,13 +168,17 @@ void triangleCountParallel(Graph &g, uint strategy)
         {
             MPI_Reduce(&count, NULL, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
         }
+        sync_time = t1.stop();
     }
 
     // --- synchronization phase start ---
     if (process_id == 0){
 
         std::cout << "Communication strategy : " << strategy << "\n";
+        std::cout << "World size : " << num_processors << "\n";
+        std::cout << "rank, edges, triangle_count, communication_time" << std::endl;
 
+        t1.start();
         if (strategy == 1)
         {
             for (int i = 1; i < num_processors; i++)
@@ -192,7 +201,7 @@ void triangleCountParallel(Graph &g, uint strategy)
         {
             MPI_Reduce(&count, &global_count, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
         }
-
+        sync_time = t1.stop();
     }
 
     // --- synchronization phase end -----
@@ -206,6 +215,7 @@ void triangleCountParallel(Graph &g, uint strategy)
     }
     else{
         // print process statistics
+        std::cout << process_id << ", " << edge_count << ", " count << ", " << sync_time;
     }
 }
 
@@ -226,7 +236,7 @@ int main(int argc, char *argv[])
 
     std::cout << std::fixed;
     // Get the world size and print it out here
-    // std::cout << "World size : " << world_size << "\n";
+    // 
     
 
     Graph g;

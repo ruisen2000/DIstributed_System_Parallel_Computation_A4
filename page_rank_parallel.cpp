@@ -289,7 +289,12 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
             else if (strategy == 3)
             {
                 // send zeros
-                MPI_Reduce(pr_next + start, buffer, end - start, MPI_LONG_LONG, MPI_SUM, process_id, MPI_COMM_WORLD);
+                for (int i = 1; i < num_processors; i++)
+                {
+                    uintV p_start = assignedVerticies[i - 1];
+                    uintV p_end = assignedVerticies[i];
+                    MPI_Reduce(pr_next + start, buffer, p_end - p_start, MPI_LONG_LONG, MPI_SUM, i, MPI_COMM_WORLD);
+                }
             }
             else
             {
