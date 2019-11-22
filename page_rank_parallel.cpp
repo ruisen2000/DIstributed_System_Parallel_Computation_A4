@@ -226,11 +226,17 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
                     uintV p_end = assignedVerticies[i];
                     if (i == process_id)
                     {
-                        MPI_Reduce(pr_next + start, buffer, p_end - p_start, MPI_LONG_LONG, MPI_SUM, process_id, MPI_COMM_WORLD);
+                        // receive chunks to other processes
+                        MPI_Reduce(pr_next + start, buffer, end - start, MPI_LONG_LONG, MPI_SUM, process_id, MPI_COMM_WORLD);
+                        for (int i = start; i < end; i++)
+                        {
+                            pr_next[i] = buffer[i - start];
+                        }
                     }
                     else
                     {
-                        MPI_Reduce(pr_next + start, NULL, p_end - p_start, MPI_LONG_LONG, MPI_SUM, i, MPI_COMM_WORLD);    
+                        // send chunks to other processes
+                        MPI_Reduce(pr_next + p_start, NULL, p_end - p_start, MPI_LONG_LONG, MPI_SUM, i, MPI_COMM_WORLD);    
                     }
                     
                 }
@@ -282,7 +288,8 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
             }
             else if (strategy == 3)
             {
-                // do nothing in root
+                // send zeros
+                MPI_Reduce(pr_next + start, buffer, end - start, MPI_LONG_LONG, MPI_SUM, process_id, MPI_COMM_WORLD);
             }
             else
             {
@@ -296,29 +303,21 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
         }
     }
 
-    
-    if (process_id != 0)
-    {        
-        MPI_Send(pr_curr + start, end - start, MPI_LONG_LONG, 0, 0, MPI_COMM_WORLD);        
-    }
-    else
-    {  // root process
-        for (int i = 1; i < num_processors; i++)
-        {
-            uintV p_start = assignedVerticies[i - 1];
-            uintV p_end = assignedVerticies[i];
-            MPI_Recv(buffer, p_end - p_start, MPI_LONG_LONG, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            for (int j = 0; j < p_end - p_start; j++)
-            {
-                pr_curr[j + p_start] = buffer[j];
-            }
-        }
+    PageRankType sum_of_page_ranks = 0;
 
-        PageRankType sum_of_page_ranks = 0;
-        for (uintV u = 0; u < n; u++)
+    if (process_id != 0)
+    {
+        for (uintV u = start; u < end; u++)
         {
             sum_of_page_ranks += pr_curr[u];
         }
+        // send sum to root
+        MPI_Reduce(&sum_of_page_ranks, NULL, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);   
+    }
+    else
+    {  // root process
+        int local_dummy = 0;
+        MPI_Reduce(&local_dummy, &sum_of_page_ranks, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
         //time_taken = t1.stop();
         std::cout << "Sum of page rank : " << sum_of_page_ranks << "\n";
         //std::cout << "Time taken (in seconds) : " << std::setprecision(TIME_PRECISION) << time_taken << "\n";

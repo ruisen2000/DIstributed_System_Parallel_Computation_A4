@@ -1,0 +1,6 @@
+pscp -P 24 "C:\Users\Greyson\Documents\CMPT431\CMPT431_A4\page_rank_parallel.cpp" greysonw@cs-cloud-02.cs.surrey.sfu.ca:/home/greysonw/sfuhome/CMPT431/A4
+
+sed -i 's/\r//g' submit.sh
+sbatch submit.sh
+tail -f slurm-1342.out
+make triangle_counting_parallel

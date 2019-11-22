@@ -7,7 +7,7 @@
 
 
 srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 0 
-srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 1
+#srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 1
 #srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 2 
-#srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 3
+srun /home/$USER/sfuhome/CMPT431/A4/./page_rank_parallel  --strategy 3
 
