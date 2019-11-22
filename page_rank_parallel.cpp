@@ -148,6 +148,14 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
     int* assignedVerticies = new int[num_processors];  // Array stores the start/end vertex for each thread
     getStartEndValues(g, n, assignedVerticies, num_processors - 1);
 
+    // Process 1 should also start at location 0
+    int* scatterv_displs = new int[num_processors];
+    scatterv_displs[0] = 0;
+    for (int i = 1; i < num_processors; i++)
+    {
+        scatterv_displs[i] = assignedVerticies[i-1];
+    }
+
     int start = 0;
     int end = 0;
 
@@ -203,7 +211,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
              else if (strategy == 2)
             {
                MPI_Reduce(pr_next, NULL, n, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-               MPI_Scatterv(NULL, NULL, NULL, MPI_LONG_LONG, buffer, end - start, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
+               MPI_Scatterv(NULL, sendCount, scatterv_displs, MPI_LONG_LONG, buffer, end - start, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
             
                for (int i = start; i < end; i++)
                 {
@@ -268,15 +276,9 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
                 }
             }
             else if (strategy == 2)
-            {
-               int* sendCount = new int[num_processors];
-               sendCount[0] = 0;
-               for (int i = 1; i < num_processors; i++)
-               {
-                  sendCount[i] = assignedVerticies[i] - assignedVerticies[i-1];
-               }
+            {               
                MPI_Reduce(pr_next, buffer, n, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-               MPI_Scatterv(buffer, sendCount, assignedVerticies, MPI_LONG_LONG, NULL, 0, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
+               MPI_Scatterv(buffer, sendCount, scatterv_displs, MPI_LONG_LONG, NULL, 0, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
             }
             else if (strategy == 3)
             {
@@ -300,7 +302,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
         MPI_Send(pr_curr + start, end - start, MPI_LONG_LONG, 0, 0, MPI_COMM_WORLD);        
     }
     else
-    {
+    {  // root process
         for (int i = 1; i < num_processors; i++)
         {
             uintV p_start = assignedVerticies[i - 1];
@@ -329,6 +331,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
     delete[] buffer;
     delete[] assignedVerticies;
     delete[] sendCount;
+    delete[] scatterv_displs;
  
 }
 
