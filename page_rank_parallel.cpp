@@ -52,8 +52,7 @@ void pageRankSerial(Graph &g, int max_iters)
                 pr_next[v] += (pr_curr[u] / out_degree);
             }
         }
-        
-        
+                
         for (uintV v = 0; v < n; v++)
         {
             pr_next[v] = PAGE_RANK(pr_next[v]);
@@ -62,15 +61,7 @@ void pageRankSerial(Graph &g, int max_iters)
             pr_curr[v] = pr_next[v];
             pr_next[v] = 0.0;
         }
-
-        if (process_id == 0){
-            std::cout << "Serial: " << std::endl;
-            for (int i = 0; i < 50; i++)
-            {
-                std:: cout << pr_curr[i] << " ";
-            }
-            std::cout << std::endl;
-        }
+        
     }
     // -------------------------------------------------------------------
 
@@ -195,7 +186,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
                     uintV v = g.vertices_[u].getOutNeighbor(i);                
                     pr_next[v] += (pr_curr[u] / out_degree);                
                 }
-            }
+            }       
 
             if (strategy == 1)
             {
@@ -203,7 +194,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
                 MPI_Send(pr_next, n, MPI_LONG_LONG, 0, 0, MPI_COMM_WORLD);
                 MPI_Recv(buffer, numItems, MPI_LONG_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                for (int i = start; i < start + 50; i++)
+                for (int i = start; i < end; i++)
                 {
                     pr_next[i] = buffer[i - start];
                 }
@@ -252,15 +243,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
             {
                 pr_next[i] = 0;
             }
-
-            if (process_id == 1){
-                std::cout << "Parallel: " << std::endl;
-                for (int i = 0; i < 50; i++)
-                {
-                    std:: cout << pr_curr[i] << " ";
-                }
-                std::cout << std::endl;
-            }
+            
         } 
         else // Root process        
         {            
@@ -273,13 +256,13 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
                     {
                         pr_next[j] = pr_next[j] + buffer[j];
                     }
-                }
+                }                              
 
                 for (int i = 1; i < num_processors; i++)
                 {
                     uintV p_start = assignedVerticies[i - 1];
                     uintV p_end = assignedVerticies[i];
-                    std::cout << "send to process " << i << " start: " << p_start << " end " << p_end << " n: " << n << std::endl;
+                    //std::cout << "send to process " << i << " start: " << p_start << " end " << p_end << " n: " << n << std::endl;
                     MPI_Send(pr_next + p_start, p_end - p_start, MPI_LONG_LONG, i, 0, MPI_COMM_WORLD);
                     
                 }
@@ -381,8 +364,6 @@ int main(int argc, char *argv[])
         std::cout << "Communication strategy : " << strategy << "\n";
         std::cout << "Iterations : " << max_iterations << "\n";
     }
-
-    max_iterations = 1;
 
     Graph g;
     g.readGraphFromBinary<int>(input_file_path);
