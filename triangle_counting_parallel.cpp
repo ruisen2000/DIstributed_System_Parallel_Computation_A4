@@ -125,37 +125,38 @@ void triangleCountParallel(Graph &g, uint strategy)
     MPI_Comm_size(MPI_COMM_WORLD, &num_processors);
     MPI_Comm_rank(MPI_COMM_WORLD, &process_id);
 
-    uint* assignedVerticies = new uint[num_processors];  // Array stores the start/end vertex for each thread
-    getStartEndValues(g, n, assignedVerticies, num_processors - 1);
+    uint* assignedVerticies = new uint[num_processors + 1];  // Array stores the start/end vertex for each thread
+    getStartEndValues(g, n, assignedVerticies, num_processors);
 
-    uintV start = assignedVerticies[process_id - 1];
-    uintV end = assignedVerticies[process_id];
+    uintV start = assignedVerticies[process_id];
+    uintV end = assignedVerticies[process_id + 1];
     long count = 0; 
     long global_count = 0;
     uintE edge_count = 0;
     double sync_time = 0.0;
 
     timer t1;
-
-    if(process_id != 0){
-        for (uintV u = start; u < end; u++)
+    
+    for (uintV u = start; u < end; u++)
+    {
+        uintE out_degree = g.vertices_[u].getOutDegree();
+        edge_count += out_degree;
+        for (uintE i = 0; i < out_degree; i++)
         {
-            uintE out_degree = g.vertices_[u].getOutDegree();
-            edge_count += out_degree;
-            for (uintE i = 0; i < out_degree; i++)
-            {
-                uintV v = g.vertices_[u].getOutNeighbor(i);
-                count += countTriangles(g.vertices_[u].getInNeighbors(),
-                                                 g.vertices_[u].getInDegree(),
-                                                 g.vertices_[v].getOutNeighbors(),
-                                                 g.vertices_[v].getOutDegree(),
-                                                 u,
-                                                 v);            
-            }
+            uintV v = g.vertices_[u].getOutNeighbor(i);
+            count += countTriangles(g.vertices_[u].getInNeighbors(),
+                                             g.vertices_[u].getInDegree(),
+                                             g.vertices_[v].getOutNeighbors(),
+                                             g.vertices_[v].getOutDegree(),
+                                             u,
+                                             v);            
         }
+    }
 
+    
+    if (process_id != 0)
+    {
         t1.start();
-
         if (strategy == 1)
         {
             MPI_Send(&count, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
@@ -170,28 +171,28 @@ void triangleCountParallel(Graph &g, uint strategy)
         }
         sync_time = t1.stop();
     }
-
+        
     // --- synchronization phase start ---
     if (process_id == 0){
 
-        std::cout << "Communication strategy : " << strategy << "\n";
-        std::cout << "World size : " << num_processors << "\n";
-        std::cout << "rank, edges, triangle_count, communication_time" << std::endl;
+        t1.start();   
 
-        t1.start();
         if (strategy == 1)
         {
+            long count_buffer = 0;
+            global_count = global_count + count;
+
             for (int i = 1; i < num_processors; i++)
             {
-                MPI_Recv(&count, 1, MPI_LONG, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                global_count = global_count + count;
+                MPI_Recv(&count_buffer, 1, MPI_LONG, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                global_count = global_count + count_buffer;
             }
         }
         else if (strategy == 2)
         {
             long* buffer = (long *)malloc(sizeof(long) * num_processors);
             MPI_Gather(&count, 1, MPI_LONG, buffer, 1, MPI_LONG, 0, MPI_COMM_WORLD);
-            for (int i = 1; i < num_processors; i++)
+            for (int i = 0; i < num_processors; i++)
             {
                 global_count = global_count + buffer[i];
             }
@@ -206,16 +207,12 @@ void triangleCountParallel(Graph &g, uint strategy)
 
     // --- synchronization phase end -----
 
+    std::cout << process_id << ", " << edge_count << ", " << count << ", " << sync_time << std::endl;
+
     if(process_id == 0){
         // Print out overall statistics
         std::cout << "Number of triangles : " << global_count << "\n";
-        std::cout << "Number of unique triangles : " << global_count / 3 << "\n";
-        
-        // print process statistics and other results
-    }
-    else{
-        // print process statistics
-        std::cout << process_id << ", " << edge_count << ", " << count << ", " << sync_time << std::endl;
+        std::cout << "Number of unique triangles : " << global_count / 3 << "\n";        
     }
 }
 
@@ -235,9 +232,18 @@ int main(int argc, char *argv[])
     MPI_Init(NULL, NULL);
 
     std::cout << std::fixed;
-    // Get the world size and print it out here
-    // 
-    
+
+    int process_id;
+    int num_processors;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_processors);
+    MPI_Comm_rank(MPI_COMM_WORLD, &process_id);
+
+    if(process_id == 0)
+    {
+        std::cout << "World size : " << num_processors << "\n";
+        std::cout << "Communication strategy : " << strategy << "\n";        
+        std::cout << "rank, edges, triangle_count, communication_time" << std::endl;
+    }    
 
     Graph g;
     g.readGraphFromBinary<int>(input_file_path);
@@ -262,8 +268,6 @@ int main(int argc, char *argv[])
         break;
     }
 
-    int process_id;
-    MPI_Comm_rank(MPI_COMM_WORLD, &process_id);
     if (process_id == 0)
     {
         double time_taken = t1.stop();
