@@ -20,6 +20,7 @@ typedef int64_t PageRankType;
 typedef float PageRankType;
 #endif
 
+/* Serial Computation using 1 Process */
 void pageRankSerial(Graph &g, int max_iters)
 {
     uintV n = g.n_;
@@ -84,6 +85,7 @@ void pageRankSerial(Graph &g, int max_iters)
     delete[] pr_next;
 }
 
+/* Assign parts of the array to each MPI call */
 void getStartEndValues(Graph &g, uintV n, int* assignedVerticies, int n_workers)
 {
     int arrLen = n_workers + 1;
@@ -124,6 +126,11 @@ void getStartEndValues(Graph &g, uintV n, int* assignedVerticies, int n_workers)
     }
 }
 
+/* Use MPI System: 
+Strategy 1: Use MPI_SEND/MPI_RECEIVE to send to each individual process for computation.
+Strategy 2: Use MPI_Gather to gather results back to process 0.
+Strategy 3: Use MPI_Reduce to automatically combine results.
+*/
 void pageRankParallel(Graph &g, int max_iters, uint strategy)
 {
 
@@ -169,6 +176,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
 
     t2.start();    
 
+    /* Process assigned part of the graph */
     for (int iter = 0; iter < max_iters; iter++)
     {        
         // for each vertex 'u', process all its outNeighbors 'v'
@@ -184,7 +192,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
         }    
 
         t1.start();
-        if(process_id != 0) {            
+        if(process_id != 0) {     // Worker Process       
             if (strategy == 1)
             {
                 int numItems = end - start;
@@ -236,7 +244,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
             }
 
         } 
-        else // Root process        
+        else // Root process, gather computed results from workers        
         {            
             if (strategy == 1)
             {
@@ -304,7 +312,8 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
             pr_next[i] = 0;
         }
     }
-
+    
+    // Individual Process stats
     std::cout << process_id << ", " << edges_processed << ", " << sync_time << std::endl;
 
     PageRankType sum_of_page_ranks = 0;
@@ -320,7 +329,7 @@ void pageRankParallel(Graph &g, int max_iters, uint strategy)
         MPI_Reduce(&sum_of_page_ranks, NULL, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);        
     }
     else
-    {  // root process
+    {  // root process, cumultative stats
         PageRankType global_sum = 0;
         MPI_Reduce(&sum_of_page_ranks, &global_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
