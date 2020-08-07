@@ -1,1 +1,1 @@
-CMPT431_A4
+Assignment 4: Parallel Computation of pagerank
