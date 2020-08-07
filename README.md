@@ -1,1 +1,1 @@
-Assignment 4: Parallel Computation of pagerank
+Assignment 4: Distributed Computation of pagerank using MPI
