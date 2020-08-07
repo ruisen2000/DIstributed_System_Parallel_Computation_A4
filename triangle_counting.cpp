@@ -3,6 +3,7 @@
 #include "core/graph.h"
 #include <mpi.h>
 
+/* Count number of triangles given verticies */
 uintV countTriangles(uintV *array1, uintE len1, uintV *array2, uintE len2, uintV u, uintV v)
 {
 
@@ -39,6 +40,7 @@ uintV countTriangles(uintV *array1, uintE len1, uintV *array2, uintE len2, uintV
     return count;
 }
 
+/* Serial Computation using 1 Process */
 void triangleCountSerial(Graph &g)
 {
     uintV n = g.n_;
@@ -76,6 +78,7 @@ void triangleCountSerial(Graph &g)
     std::cout << "Time taken (in seconds) : " << std::setprecision(TIME_PRECISION) << time_taken << "\n";
 }
 
+/* Assign parts of the array to each MPI call */
 void getStartEndValues(Graph &g, uintV n, uint* assignedVerticies, int n_workers)
 {
     int arrLen = n_workers + 1;
@@ -116,6 +119,11 @@ void getStartEndValues(Graph &g, uintV n, uint* assignedVerticies, int n_workers
     }
 }
 
+/* Use MPI System: 
+Strategy 1: Use MPI_SEND/MPI_RECEIVE to send to each individual process for computation.
+Strategy 2: Use MPI_Gather to gather results back to process 0.
+Strategy 3: Use MPI_Reduce to automatically combine results.
+*/
 void triangleCountParallel(Graph &g, uint strategy)
 {
 	uintV n = g.n_;
@@ -240,7 +248,7 @@ int main(int argc, char *argv[])
     	triangleCountParallel(g, 1);
         break;
     case 2:
-   		triangleCountParallel(g, 2);
+	triangleCountParallel(g, 2);
         break;
     case 3:
     	triangleCountParallel(g, 3);
